@@ -203,6 +203,49 @@ async function handler(req,res){
 http.createServer((req,res)=>handler(req,res).catch(e=>send(res,500,{error:e.message}))).listen(PORT,'0.0.0.0',()=>{
  console.log('PoE2 Voice Price listening on '+PORT);
 
+ if(process.env.RUN_SYLVAN_DEEP==='1'){
+  (async()=>{
+   const a=(await data('stats')).flatMap(g=>g.entries||[]);
+   const sp=a.find(x=>x.id==='explicit.stat_3984865854');
+   const cp=a.find(x=>x.id==='explicit.stat_1067622524');
+   const cases=[
+    {key:'2socket-strong-under100',spirit:73,companion:95,max:100,two:true},
+    {key:'2socket-strong-100to250',spirit:73,companion:95,min:100,max:250,two:true},
+    {key:'2socket-top-75-100',spirit:75,companion:100,max:250,two:true},
+    {key:'2socket-any-high-roll',spirit:73,companion:90,max:250,two:true},
+    {key:'2socket-all',max:100,two:true}
+   ];
+   for(const c of cases){
+    const query={status:{option:'available'},name:"Sylvan's Effigy",type:"Stoic Sceptre",stats:[],
+      filters:{type_filters:{filters:{rarity:{option:'unique'}}},trade_filters:{filters:{price:{...c.min?{min:c.min}:{},...c.max?{max:c.max}:{},option:'divine'}}}}};
+    if(c.two)query.filters.equipment_filters={filters:{rune_sockets:{min:2}}};
+    const filters=[];
+    if(sp&&c.spirit)filters.push({id:sp.id,value:{min:c.spirit}});
+    if(cp&&c.companion)filters.push({id:cp.id,value:{min:c.companion}});
+    if(filters.length)query.stats=[{type:'and',filters}];
+    try{
+     const r=await ggg('/api/trade2/search/poe2/Forbidden%20Rites','POST',{query,sort:{price:'asc'}});
+     console.log('[SYLVAN2:SEARCH] '+JSON.stringify({key:c.key,total:r.total,uri:'https://www.pathofexile.com/trade2/search/poe2/Forbidden%20Rites/'+r.id}));
+     const ids=(r.result||[]).filter(Boolean).slice(0,25),offers=[];
+     for(let j=0;j<ids.length;j+=10){
+      const fetched=await ggg('/api/trade2/fetch/'+ids.slice(j,j+10).map(encodeURIComponent).join(',')+'?query='+encodeURIComponent(r.id));
+      for(const x of fetched.result||[]){
+       const it=x.item||{},p=x.listing?.price||{},toStr=o=>typeof o==='string'?o:String(o?.description||'');
+       offers.push({id:x.id,price:p.amount,unit:p.currency,corrupt:!!it.corrupted,sockets:it.sockets?.length||0,
+        explicit:(it.explicitMods||[]).map(toStr).slice(0,9),
+        implicit:(it.implicitMods||[]).map(toStr).slice(0,5),
+        enchants:(it.enchantMods||[]).map(toStr).slice(0,3),
+        runes:(it.runeMods||[]).map(toStr).slice(0,3),
+        date:x.listing?.indexed});
+      }
+     }
+     console.log('[SYLVAN2:OFFERS] '+JSON.stringify({key:c.key,offers}));
+    }catch(e){console.log('[SYLVAN2:ERROR] '+c.key+' '+e.message)}
+   }
+  })().catch(e=>console.error('[SYLVAN2:FATAL] '+e.message));
+ }
+
+
  if(process.env.RUN_SYLVAN_CHECK==='1'){
    (async()=>{
      const all=(await data('stats')).flatMap(g=>(g.entries||[]).map(x=>({...x,group:g.label})));
