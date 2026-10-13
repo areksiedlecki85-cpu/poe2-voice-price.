@@ -85,6 +85,22 @@ async function handler(req,res){
        if(min!=null&&(!Number.isFinite(min)||Math.abs(min)>1e6))return errorPage('Nieprawidłowa wartość moda.');
        mods.push({id:mod.id,min});
      }
+     // An unambiguous crafted prefix can be resolved dynamically without hardcoding a trade stat ID.
+     // /go?...&effect=suffixes verifies its exact presence in the live official PoE Trade catalog.
+     const effect=String(url.searchParams.get('effect')||'').trim().toLowerCase();
+     if(effect){
+       if(effect!=='suffixes')return errorPage('Nieznany efekt: '+effect);
+       const statCandidates=all.filter(s=>{
+         const normalized=String(s.text||'').toLowerCase()
+           .replace(/^[\\s\\d#%+().\\-–—]+/,'').replace(/\\s+/g,' ').trim();
+         return normalized==='increased effect of suffixes';
+       });
+       const found=statCandidates.find(s=>s.id.startsWith('crafted.'))
+         ||statCandidates.find(s=>s.id.startsWith('explicit.'))
+         ||statCandidates[0];
+       if(!found)return errorPage('Oficjalny katalog PoE Trade nie zawiera filtra Increased Effect of Suffixes. Nie uruchamiam wyszukiwania bez tego moda.');
+       if(!mods.some(m=>m.id===found.id))mods.push({id:found.id,min:null});
+     }
      if(!mods.length&&!energyShield&&!itemType)return errorPage('Wyszukiwanie wymaga przynajmniej jednego moda, ES lub konkretnej bazy.');
      const {query}=buildQuery({mods,energyShield,rarity,category,itemType});
      const result=await ggg('/api/trade2/search/poe2/'+encodeURIComponent(league),'POST',{query,sort:{price:'asc'}});
