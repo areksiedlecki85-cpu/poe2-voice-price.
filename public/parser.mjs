@@ -1,7 +1,9 @@
 export const aliases=[
-{name:'Minion Critical Strike Damage',words:['minion critical strike damage','minion critical damage','minion crit damage','obrazenia krytyczne minionow'],want:['minion','critical','damage'],exclude:['chance']},
+{name:'Minion Critical Strike Damage',words:['minion critical strike damage','minion critical damage','minion crit damage','minion crit dmg','minion cdmg','crit dmg minion','obrazenia krytyczne minionow','kryt dmg minion'],want:['minion','critical','damage'],exclude:['chance']},
 {name:'Minion Critical Strike Chance',words:['minion critical strike chance','minion crit chance','szansa na krytyka minionow'],want:['minion','critical','chance'],exclude:['damage']},
-{name:'Minion Damage',words:['minion damage increased','increased minion damage','minion damage','obrazenia minionow','obrazenia kompanionow'],want:['minion','damage'],exclude:['critical','crit']},
+{name:'Minion Damage',words:['minion damage increased','increased minion damage','minion damage','minion dmg','obrazenia minionow'],want:['minion','damage'],exclude:['critical','crit']},
+{name:'Companion Damage',words:['companions deal increased damage','companion increased damage','companion damage','companions damage','companion dmg','comp dmg','dmg companion','obrazenia kompanionow','damage kompanionow'],want:['companion','damage'],exclude:['minion']},
+{name:'Increased Effect of Suffixes',words:['increased effect of suffixes','increase effect of suffixes','effect of suffixes','suffix effect','efekt sufiksow','moc sufiksow'],want:['effect','suffixes'],exclude:['prefixes']},
 {name:'Minion Attack Speed',words:['minion attack speed','szybkosc ataku minionow'],want:['minion','attack','speed']},
 {name:'Minion Skill Levels',words:['level of all minion skills','minion skill level','poziom minionow'],want:['level','minion']},
 {name:'Spirit',words:['spirit','spirita'],want:['spirit']},
