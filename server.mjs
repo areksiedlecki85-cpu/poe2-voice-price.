@@ -202,6 +202,7 @@ async function handler(req,res){
 }
 http.createServer((req,res)=>handler(req,res).catch(e=>send(res,500,{error:e.message}))).listen(PORT,'0.0.0.0',()=>{
  console.log('PoE2 Voice Price listening on '+PORT);
+ if(process.env.RUN_SAFE_PRICE_PROBE==='1')import('./scripts/safe-price-probe.mjs').catch(e=>console.error('[HUNTER:PROBE] '+e.message));
 
  if(process.env.RUN_TIARA_VALUATION==='1'){
    (async()=>{
