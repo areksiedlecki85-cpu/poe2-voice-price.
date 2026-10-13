@@ -99,6 +99,15 @@ async function handler(req,res){
        if(!found)return errorPage('Oficjalny katalog PoE Trade nie zawiera filtra Increased Effect of Suffixes. Nie uruchamiam wyszukiwania bez tego moda.');
        if(!mods.some(m=>m.id===found.id))mods.push({id:found.id,min:null});
      }
+     // Dynamically map common human-readable stat shortcuts to the live PoE2 catalog.
+     const shortcut=url.searchParams.getAll('stat');
+     for(const name of shortcut){
+       if(name!=='companion-damage')return errorPage('Nieznany skrót moda: '+name);
+       const candidates=all.filter(x=>/^Companions deal #?%? increased Damage$/i.test(String(x.text||'').replace(/\s+/g,' ').trim()));
+       const match=candidates.find(x=>x.id.startsWith('explicit.'))||candidates[0];
+       if(!match)return errorPage('Brak jednoznacznego moda Companions deal increased Damage w katalogu PoE.');
+       if(!mods.some(m=>m.id===match.id))mods.push({id:match.id,min:null});
+     }
      if(!mods.length&&!energyShield&&!itemType)return errorPage('Wyszukiwanie wymaga przynajmniej jednego moda, ES lub konkretnej bazy.');
      const {query}=buildQuery({mods,energyShield,rarity,category,itemType});
      const result=await ggg('/api/trade2/search/poe2/'+encodeURIComponent(league),'POST',{query,sort:{price:'asc'}});
@@ -149,9 +158,17 @@ async function handler(req,res){
 http.createServer((req,res)=>handler(req,res).catch(e=>send(res,500,{error:e.message}))).listen(PORT,'0.0.0.0',()=>{
  console.log('PoE2 Voice Price listening on '+PORT);
  if(process.env.RUN_TRADE_LINK_SMOKE==='1'){
-   const test='/go?league=Forbidden%20Rites&category=jewel&rarity=magic&m=explicit.stat_1854213750:20&m=explicit.stat_1589917703:20';
-   fetch('http://127.0.0.1:'+PORT+test,{redirect:'manual',signal:AbortSignal.timeout(20000)}).then(async r=>{
-     console.log('[trade-link-selftest] HTTP '+r.status+' location='+(r.headers.get('location')||'')+' body='+(r.status!==302?(await r.text()).slice(0,500):''));
-   }).catch(e=>console.error('[trade-link-selftest] failed '+e.message));
+   (async()=>{
+     const all=(await data('stats')).flatMap(g=>(g.entries||[]).map(x=>({...x,group:g.label})));
+     for(const term of ['suffix','companion','critical damage']){
+       const hits=all.filter(x=>String(x.text).toLowerCase().includes(term)&&(!['companion','critical damage'].includes(term)||/damage/i.test(x.text))).slice(0,45);
+       console.log('[DIAGNOSTIC:catalog] '+term+' '+JSON.stringify(hits.map(x=>({id:x.id,text:x.text,group:x.group}))));
+     }
+     for(const base of ['Diamond Jewel','Diamond']){
+       const url='/go?league=Forbidden%20Rites&category=jewel&rarity=rare&base='+encodeURIComponent(base)+'&m=explicit.stat_1854213750&stat=companion-damage&effect=suffixes';
+       const response=await fetch('http://127.0.0.1:'+PORT+url,{redirect:'manual',signal:AbortSignal.timeout(24000)});
+       console.log('[DIAGNOSTIC:go] '+base+' HTTP '+response.status+' location='+String(response.headers.get('location')||'')+' text='+(response.status===302?'':(await response.text()).slice(0,600)));
+     }
+   })().catch(e=>console.error('[DIAGNOSTIC:error] '+e.message));
  }
 });
