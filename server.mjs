@@ -203,6 +203,70 @@ async function handler(req,res){
 http.createServer((req,res)=>handler(req,res).catch(e=>send(res,500,{error:e.message}))).listen(PORT,'0.0.0.0',()=>{
  console.log('PoE2 Voice Price listening on '+PORT);
 
+ if(process.env.RUN_TIARA_VALUATION==='1'){
+   (async()=>{
+     const entries=(await data('stats')).flatMap(g=>(g.entries||[]).map(e=>({...e,group:g.label})));
+     const terms=['Level of all Minion Skills','Reservation Efficiency of Minion Skills','Spirit Reservation Efficiency of Skills','to all Attributes','maximum Energy Shield','to Spirit','Allocates Zarokh'];
+     const matches={};
+     for(const term of terms){
+       matches[term]=entries.filter(x=>String(x.text||'').toLowerCase().includes(term.toLowerCase())).slice(0,30).map(x=>({id:x.id,text:x.text,group:x.group}));
+     }
+     console.log('[TIARA:CATALOG] '+JSON.stringify(matches));
+     const choose=(term,group='explicit.')=>entries.find(x=>x.id.startsWith(group)&&String(x.text||'').toLowerCase().includes(term.toLowerCase()));
+     const minion=choose('Level of all Minion Skills');
+     const minionRes=choose('Reservation Efficiency of Minion Skills');
+     const spiritRes=choose('Spirit Reservation Efficiency of Skills');
+     const attrs=choose('to all Attributes');
+     const spirit=choose('to Spirit');
+     console.log('[TIARA:SELECT] '+JSON.stringify({minion,minionRes,spiritRes,attrs,spirit}));
+     const cases=[
+       {key:'tiara-2minion-spiritres8',base:true,gem:2,res:8},
+       {key:'tiara-2minion-450es',base:true,gem:2,es:450},
+       {key:'tiara-2minion-res8-es400',base:true,gem:2,res:8,es:400},
+       {key:'tiara-gem2-minionres8',base:true,gem:2,minRes:8},
+       {key:'allhelm-gem2-res8-es400',base:false,gem:2,res:8,es:400},
+       {key:'tiara-450ES-attrs40',base:true,es:450,attr:40}
+     ];
+     for(const c of cases){
+       try{
+         const rows=[];
+         if(c.gem&&minion)rows.push({id:minion.id,value:{min:c.gem}});
+         if(c.res&&spiritRes)rows.push({id:spiritRes.id,value:{min:c.res}});
+         if(c.minRes&&minionRes)rows.push({id:minionRes.id,value:{min:c.minRes}});
+         if(c.attr&&attrs)rows.push({id:attrs.id,value:{min:c.attr}});
+         const armourFilters=c.es?{armour_filters:{filters:{es:{min:c.es}}}}:{};
+         const query={status:{option:'available'},...c.base?{type:'Ancestral Tiara'}:{},
+         stats:rows.length?[{type:'and',filters:rows}]:[],
+         filters:{...armourFilters,type_filters:{filters:{rarity:{option:'rare'},category:{option:'armour.helmet'}}}}};
+         const rs=await ggg('/api/trade2/search/poe2/Forbidden%20Rites','POST',{query,sort:{price:'asc'}});
+         const uri='https://www.pathofexile.com/trade2/search/poe2/Forbidden%20Rites/'+rs.id;
+         console.log('[TIARA:SEARCH] '+JSON.stringify({key:c.key,total:rs.total,uri,filters:rows}));
+         const ids=(rs.result||[]).filter(Boolean).slice(0,16),offers=[];
+         for(let k=0;k<ids.length;k+=10){
+           const res=await ggg('/api/trade2/fetch/'+ids.slice(k,k+10).map(encodeURIComponent).join(',')+'?query='+encodeURIComponent(rs.id));
+           for(const x of res.result||[]){
+             const it=x.item||{},p=x.listing?.price||{};
+             offers.push({price:p.amount,unit:p.currency,name:it.name,type:it.baseType,ilvl:it.ilvl,corrupted:it.corrupted||false,
+             life:it.life,def:it.defences,quality:it.properties,
+             explicit:(it.explicitMods||[]).map(y=>typeof y==='string'?y:y.description),
+             implicit:(it.implicitMods||[]).map(y=>typeof y==='string'?y:y.description),
+             enchant:(it.enchantMods||[]).map(y=>typeof y==='string'?y:y.description),
+             rune:(it.runeMods||[]).map(y=>typeof y==='string'?y:y.description),
+             sockets:it.sockets,
+             indexed:x.listing?.indexed});
+           }
+         }
+         console.log('[TIARA:OFFERS] '+JSON.stringify({key:c.key,offers}));
+         await pause(2000);
+       }catch(e){
+         console.log('[TIARA:ERROR] '+c.key+' '+e.message);
+         if(e.http===429)break;
+       }
+     }
+   })().catch(e=>console.error('[TIARA:FATAL] '+e.message));
+ }
+
+
  if(process.env.RUN_REGALIA_SCAN==='1'){
   (async()=>{
    const all=(await data('stats')).flatMap(g=>(g.entries||[]).map(x=>({...x,group:g.label})));
