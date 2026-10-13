@@ -90,4 +90,14 @@ async function handler(req,res){
  catch{return send(res,404,{error:'Nie znaleziono pliku'})}
 }
 http.createServer((req,res)=>handler(req,res).catch(e=>send(res,500,{error:e.message}))).listen(PORT,'0.0.0.0',()=>{console.log('PoE2 Voice Price listening on '+PORT);
- (async()=>{for(const kind of ['stats','leagues']){try{const entries=await data(kind);console.log('[poe-trade] '+kind+' available: '+entries.length)}catch(e){console.error('[poe-trade] '+kind+' ERROR: '+e.message)}}})().catch(e=>console.error('[poe-trade] startup failed: '+e.message));});
+ (async()=>{for(const kind of ['stats','leagues']){try{const entries=await data(kind);console.log('[poe-trade] '+kind+' available: '+entries.length)}catch(e){console.error('[poe-trade] '+kind+' ERROR: '+e.message)}}
+    try {
+      const leagues=await data('leagues');
+      const league=(leagues.find(x=>x.realm==='poe2'&&!/hardcore|standard/i.test(x.id))||leagues.find(x=>x.id==='Standard')||leagues[0])?.id;
+      if(league){
+        const query={query:{status:{option:'available'},filters:{type_filters:{filters:{rarity:{option:'magic'}}}}},sort:{price:'asc'}};
+        const result=await ggg('/api/trade2/search/poe2/'+encodeURIComponent(league),'POST',query);
+        console.log('[poe-trade] live-search smoke '+league+': id='+(result.id?'yes':'none')+', total='+result.total+', error='+(result.error?.message||'none'));
+      }
+    } catch(e){console.error('[poe-trade] live-search smoke ERROR: '+e.message)}
+ })().catch(e=>console.error('[poe-trade] startup failed: '+e.message));});
