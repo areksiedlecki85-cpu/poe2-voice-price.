@@ -211,6 +211,13 @@ http.createServer((req,res)=>handler(req,res).catch(e=>send(res,500,{error:e.mes
  console.log('PoE2 Voice Price listening on '+PORT);
  if(process.env.RUN_HUNTER_SMOKE==='1'){
   (async()=>{
+   for(const uri of ['/hunter.html','/hunter.mjs','/']){
+    const response=await fetch('http://127.0.0.1:'+PORT+uri,{signal:AbortSignal.timeout(10000)});
+    const content=await response.text();
+    const ok=uri==='/hunter.html'?content.includes('/hunter.mjs'):
+      uri==='/hunter.mjs'?content.includes('refresh();'):content.includes('/hunter.html');
+    console.log('[HUNTER:ROUTE] '+JSON.stringify({uri,http:response.status,bytes:content.length,ok}));
+   }
    const res=await fetch('http://127.0.0.1:'+PORT+'/api/hunter',{signal:AbortSignal.timeout(65000)});
    const json=await res.json();
    console.log('[HUNTER:SMOKE] '+JSON.stringify({http:res.status,total:json.total,items:json.items?.length,partial:json.partial,errors:json.errors?.slice(0,10),first:json.items?.slice(0,3).map(x=>({name:x.name,value:x.value,category:x.category,listingCount:x.listingCount})),note:json.error}));
