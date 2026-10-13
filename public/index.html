@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pl"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101620"><meta name="description" content="Głosowe wyszukiwanie przedmiotów PoE2 z aktualnymi ofertami rynku.">
+<link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icon.svg" type="image/svg+xml">
+<title>PoE2 Voice Price</title>
+<style>
+:root{color-scheme:dark;--bg:#0c111a;--card:#172230;--edge:#354455;--gold:#e9bf77;--txt:#ecf1fa;--muted:#b2c0cc;--red:#ffb6ad;--good:#a2e9c4;font-family:system-ui,-apple-system,Arial,sans-serif}
+*{box-sizing:border-box}body{margin:0;color:var(--txt);background:radial-gradient(ellipse at 80% -10%,#263749,transparent 55%),var(--bg)}
+main{max-width:690px;margin:auto;padding:16px 14px 80px}header{display:flex;align-items:center;gap:14px;padding:10px 0 16px}h1{font-size:23px;letter-spacing:-.5px;margin:0}header p{color:var(--muted);margin:4px 0;font-size:12px}
+h2{font-size:16px;margin:0 0 14px}.logo{display:grid;place-items:center;width:52px;height:52px;background:#3f3125;color:#ffd592;border:1px solid #a9814c;border-radius:16px;font-size:27px}
+.card{border:1px solid var(--edge);background:linear-gradient(135deg,#1d2939,#111a28);border-radius:18px;padding:18px;margin-bottom:13px;box-shadow:0 10px 30px #0003}
+label{display:block;color:#d0d8e2;font-size:12px;margin:13px 0 6px;font-weight:650}
+input,select,textarea{width:100%;background:#101927;border:1px solid #46596e;color:var(--txt);padding:12px;border-radius:11px;font:inherit;font-size:14px;outline:none}
+textarea{min-height:104px;resize:vertical;line-height:1.5}input:focus,select:focus,textarea:focus{border-color:var(--gold)}select option{background:#1a293a}
+button{font:inherit;border:1px solid #61748a;background:#314153;color:white;border-radius:12px;padding:12px;cursor:pointer;font-weight:700}
+button:disabled{opacity:.55;cursor:not-allowed}button.gold{border:0;background:linear-gradient(135deg,#f9d595,#bd8950);color:#251b10;width:100%;font-size:16px}
+button.voice{width:100%;height:88px;font-size:19px;background:linear-gradient(135deg,#503c25,#232d3d);color:#ffdfab;border:1px solid #a68a5c}
+button.voice.active{background:#883f40;color:white;border:1px solid #ff9d8d}
+.row{display:flex;gap:9px;align-items:center}.row>*{min-width:0}.row.wrap{flex-wrap:wrap}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:10px}.status{padding:11px;background:#263445;border-radius:11px;color:#d3dde9;margin:12px 0;font-size:13px;line-height:1.5}
+.status.bad{background:#4d2b30;color:var(--red)}.status.good{background:#1b4338;color:var(--good)}.hidden{display:none!important}
+.mod{border:1px solid #44546a;border-radius:12px;background:#101b2a;padding:11px;margin:10px 0}.mod .name{flex:1}.mod .number{width:77px}
+.mod select{margin-top:10px;font-size:12px;padding:9px}.remove{font-size:20px;border:0;background:transparent;color:var(--red);padding:4px}
+#result a{color:#9dd6ff;word-break:break-word}.summary{border:1px solid #86714c;border-radius:15px;padding:15px;margin:13px 0;background:#242821}
+.big{color:var(--gold);font-size:29px;font-weight:800}.offer{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #3c4a5c;font-size:13px}
+.offer .price{white-space:nowrap;color:var(--gold);font-weight:800}small{color:var(--muted)}footer{color:#8293a6;text-align:center;font-size:11px;line-height:1.6;padding:18px}
+@media(max-width:380px){.grid{grid-template-columns:1fr}.card{padding:14px}.big{font-size:24px}}
+</style></head>
+<body><main>
+<header><div class="logo">◈</div><div><h1>PoE2 <span style="color:#e9bf77">Voice Price</span></h1><p>Mówisz statystyki. Aplikacja wyszukuje ceny.</p></div></header>
+<section class="card"><div class="row" style="justify-content:space-between"><h2>01 · Mów do mikrofonu</h2><select id="speechLang" aria-label="Język dyktowania" style="width:132px"><option value="pl-PL">Polski</option><option value="en-US">English</option></select></div>
+<button id="mic" class="voice">🎙 <span id="micLabel">Rozpocznij dyktowanie</span></button>
+<div id="status" class="status">Pobieram katalog modów i listę lig PoE…</div>
+<p class="note">Przykład: „Jewel, minion critical strike damage 20, minion damage increased 20, magic, znajdź”.</p>
+<label for="dictation">Rozpoznany tekst (możesz poprawić)</label><textarea id="dictation" placeholder="Powiedz lub wpisz statystyki przedmiotu…"></textarea>
+<div class="row wrap" style="margin-top:10px"><button id="parse">Rozpoznaj statystyki</button><button id="sample">Przykład</button></div>
+</section>
+<section class="card"><h2>02 · Zdjęcie przedmiotu</h2><label for="photo">Zrób zdjęcie albo wybierz z galerii</label><input type="file" accept="image/*" id="photo">
+<p class="note">Rozpoznawanie tekstu ze zdjęcia jest eksperymentalne. Przed wyszukiwaniem sprawdź mody.</p></section>
+<section class="card"><h2>03 · Filtry PoE2</h2>
+<label for="league">Liga</label><select id="league"><option value="">Ładowanie…</option></select>
+<div class="grid"><div><label for="category">Rodzaj</label><select id="category"><option value="">Dowolny</option><option value="jewel">Jewel</option><option value="armour.helmet">Hełm</option><option value="armour.gloves">Rękawice</option><option value="armour.chest">Klata</option><option value="armour.boots">Buty</option><option value="accessory.ring">Pierścień</option></select></div>
+<div><label for="rarity">Rzadkość</label><select id="rarity"><option value="">Dowolna</option><option value="magic">Magic</option><option value="rare">Rare</option><option value="unique">Unique</option></select></div></div>
+<div class="grid"><div><label for="es">Minimalny Energy Shield</label><input id="es" type="number" min="0" placeholder="np. 490"></div>
+<div><label for="itemType">Baza (opcjonalnie)</label><input id="itemType" placeholder="np. Opulent Gloves"></div></div>
+<div class="row" style="justify-content:space-between;margin-top:17px"><h2 style="margin:0">Statystyki</h2><button id="addMod">+ Dodaj mod</button></div>
+<div id="modList"><p class="note">Podyktuj mody albo dodaj je ręcznie.</p></div>
+<p class="note">Wybierz właściwy mod z oficjalnego katalogu. „Minion crit chance” i „minion crit damage” to różne statystyki.</p>
+<button id="search" class="gold">🔎 Sprawdź aktualne oferty</button>
+<p class="note">Gdy brak identycznych ofert, aplikacja spróbuje obniżyć minimalne wartości modów i ES do 85%. Nie usuwa wybranych statystyk.</p>
+</section>
+<section id="output" class="card hidden"><h2>04 · Wycena rynkowa</h2><div id="result"></div></section>
+<footer>Nieoficjalne narzędzie. Nie jest związane z Grinding Gear Games. Wyświetla ceny wystawionych ofert, nie udokumentowane transakcje. Nie generuje fikcyjnych cen.</footer>
+</main><script type="module" src="/app.mjs"></script></body></html>
