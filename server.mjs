@@ -118,7 +118,7 @@ async function handler(req,res){
        };
        const pattern=patterns[name];
        if(!pattern)return errorPage('Nieznany skrót moda: '+name);
-       const candidates=all.filter(x=>pattern.test(String(x.text||'').replace(/\\s+/g,' ').trim()));
+       const candidates=all.filter(x=>pattern.test(String(x.text||'').replace(/\s+/g,' ').trim()));
        const match=candidates.find(x=>x.id.startsWith('explicit.'))||candidates[0];
        if(!match)return errorPage('Brak jednoznacznego moda '+name+' w katalogu PoE.');
        if(!mods.some(m=>m.id===match.id)&&!countMods.some(m=>m.id===match.id)){
@@ -177,6 +177,15 @@ async function handler(req,res){
 }
 http.createServer((req,res)=>handler(req,res).catch(e=>send(res,500,{error:e.message}))).listen(PORT,'0.0.0.0',()=>{
  console.log('PoE2 Voice Price listening on '+PORT);
+
+ if(process.env.RUN_SAPPHIRE_SMOKE==='1'){
+   (async()=>{
+     const qs='?league=Forbidden%20Rites&category=jewel&rarity=rare&base=Sapphire%20Jewel&effect=suffixes&count_min=2&stat=minion-damage&stat=companion-damage&stat=minion-crit-damage';
+     const response=await fetch('http://127.0.0.1:'+PORT+'/go'+qs,{redirect:'manual',signal:AbortSignal.timeout(30000)});
+     console.log('[SAPPHIRE-TEST] status='+response.status+' location='+(response.headers.get('location')||'')+' body='+(response.status!==302?(await response.text()).slice(0,900):''));
+   })().catch(e=>console.error('[SAPPHIRE-TEST] error='+e.message));
+ }
+
  if(process.env.RUN_TRADE_LINK_SMOKE==='1'){
    (async()=>{
      const all=(await data('stats')).flatMap(g=>(g.entries||[]).map(x=>({...x,group:g.label})));
