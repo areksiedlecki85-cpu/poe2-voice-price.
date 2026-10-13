@@ -132,4 +132,12 @@ async function handler(req,res){
  try{const contents=await readFile(target);res.writeHead(200,{'content-type':types[path.extname(target)]||'application/octet-stream','cache-control':'no-cache'});res.end(contents)}
  catch{return send(res,404,{error:'Nie znaleziono pliku'})}
 }
-http.createServer((req,res)=>handler(req,res).catch(e=>send(res,500,{error:e.message}))).listen(PORT,'0.0.0.0',()=>console.log('PoE2 Voice Price listening on '+PORT));
+http.createServer((req,res)=>handler(req,res).catch(e=>send(res,500,{error:e.message}))).listen(PORT,'0.0.0.0',()=>{
+ console.log('PoE2 Voice Price listening on '+PORT);
+ if(process.env.RUN_TRADE_LINK_SMOKE==='1'){
+   const test='/go?league=Forbidden%20Rites&category=jewel&rarity=magic&m=explicit.stat_1854213750:20&m=explicit.stat_1589917703:20';
+   fetch('http://127.0.0.1:'+PORT+test,{redirect:'manual',signal:AbortSignal.timeout(20000)}).then(async r=>{
+     console.log('[trade-link-selftest] HTTP '+r.status+' location='+(r.headers.get('location')||'')+' body='+(r.status!==302?(await r.text()).slice(0,500):''));
+   }).catch(e=>console.error('[trade-link-selftest] failed '+e.message));
+ }
+});
