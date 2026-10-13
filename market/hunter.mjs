@@ -11,8 +11,8 @@ const pending=new Map();
 let lastRequest=0,networkQueue=Promise.resolve(),blockedUntil=0;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function boundedRetryAfter(v){
- const seconds=Number(v);
- if(Number.isFinite(seconds)&&seconds>=0)return Math.min(seconds*1000,60*60*1000);
+ const seconds=(v===null||String(v).trim()==='')?NaN:Number(v);
+ if(Number.isFinite(seconds)&&seconds>=0)return Math.max(60000,Math.min(seconds*1000,60*60*1000));
  const date=Date.parse(v||'');
  return Number.isFinite(date)?Math.max(60000,Math.min(date-Date.now(),60*60*1000)):60000;
 }
