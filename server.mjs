@@ -213,9 +213,9 @@ http.createServer((req,res)=>handler(req,res).catch(e=>send(res,500,{error:e.mes
    }
    const match=t=>all.filter(x=>x.id.startsWith('explicit.')&&new RegExp(t,'i').test(String(x.text||'')));
    const r=match('increased Reservation Efficiency of Companion Skills').find(x=>/Companion Skills/i.test(x.text));
-   const spirit=match('to Spirit').find(x=>/^\+# to Spirit$/.test(x.text?.trim()));
-   const life=match('to maximum Life').find(x=>/^\+# to maximum Life$/.test(x.text?.trim()));
-   const cold=match('to Cold Resistance').find(x=>/^\+#% to Cold Resistance$/.test(x.text?.trim()));
+   const spirit=match('to Spirit').find(x=>/^# to Spirit$/.test(x.text?.trim()));
+   const life=match('to maximum Life').find(x=>/^# to maximum Life$/.test(x.text?.trim()));
+   const cold=match('to Cold Resistance').find(x=>/^#% to Cold Resistance$/.test(x.text?.trim()));
    console.log('[REGALIA:SELECTED] '+JSON.stringify({r,spirit,life,cold}));
    const searches=[
     {key:'spirit50_res16',filters:[[r,16],[spirit,50]]},
