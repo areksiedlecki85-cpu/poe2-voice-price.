@@ -23,8 +23,23 @@ export function estimateListings(entries){
   amount:Number(p.amount)||0,currency:String(p.currency||''),
   mods:[...(x.item?.explicitMods||[]),...(x.item?.implicitMods||[]),...(x.item?.enchantMods||[])].slice(0,10)
  };}).filter(x=>x.amount>0&&x.currency);
- const prices=listings.filter(x=>['divine','divine orb'].includes(x.currency.toLowerCase())).map(x=>x.amount).sort((a,b)=>a-b).slice(0,8);
+ const currencies={'divine':'divine','divine orb':'divine','exalted':'exalted','exalted orb':'exalted','chaos':'chaos','chaos orb':'chaos'};
+ const pools=new Map();
+ for(const row of listings.slice(0,20)){
+  const currency=currencies[row.currency.toLowerCase()];
+  if(!currency)continue;
+  if(!pools.has(currency))pools.set(currency,[]);
+  pools.get(currency).push(row.amount);
+ }
+ // Currencies are NOT converted without a live exchange rate. Prefer the currency
+ // represented by the earliest (cheapest) listings, only with >=3 actual quotes.
+ const groups=[...pools.entries()].filter(([,prices])=>prices.length>=3);
  let estimate=null;
- if(prices.length>=3){const n=prices.length;const median=(prices[Math.floor((n-1)/2)]+prices[Math.floor(n/2)])/2;estimate={median,minimum:prices[0],maximum:prices[n-1],count:n};}
+ if(groups.length){
+  const [currency,all]=groups[0];
+  const prices=all.sort((a,b)=>a-b).slice(0,8);
+  const n=prices.length,median=(prices[Math.floor((n-1)/2)]+prices[Math.floor(n/2)])/2;
+  estimate={currency,median,minimum:prices[0],maximum:prices[n-1],count:n};
+ }
  return {listings:listings.slice(0,20),estimate};
 }
