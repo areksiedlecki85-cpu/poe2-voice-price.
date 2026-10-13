@@ -52,6 +52,49 @@ async function search(input,multiplier=1){
 async function handler(req,res){
  const url=new URL(req.url,'http://localhost');
  if(url.pathname==='/api/health')return send(res,200,{ok:true,note:'Serwer działa, nie oznacza to dostępności PoE Trade'});
+
+ // One-click link from ChatGPT: generate official trade search and redirect.
+ // /go?league=Forbidden%20Rites&category=jewel&rarity=magic&m=explicit.stat_1854213750:20&m=explicit.stat_1589917703:20
+ if(url.pathname==='/go'&&req.method==='GET'){
+   const errorPage=(message,statusCode=400)=>{
+     const safe=String(message).replace(/[<>&"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
+     res.writeHead(statusCode,{'content-type':'text/html; charset=utf-8','cache-control':'no-store'});
+     res.end('<!doctype html><html lang="pl"><meta name="viewport" content="width=device-width,initial-scale=1"><meta charset="utf-8"><title>PoE2 Trade</title><body style="font:16px system-ui;background:#111821;color:#f0f1f5;padding:20px"><h2>Nie mogę otworzyć wyszukiwania</h2><p>'+safe+'</p><p>Nie zmieniłam filtrów wyszukiwania.</p><a style="color:#eac08b" href="/">Przejdź do aplikacji</a></body></html>');
+   };
+   if(!rate(req))return errorPage('Za dużo zapytań. Spróbuj za minutę.',429);
+   try{
+     const league=String(url.searchParams.get('league')||'Forbidden Rites').trim();
+     const available=await data('leagues');
+     if(!available.some(x=>x.id===league))return errorPage('Nieznana liga. Otwórz aplikację i sprawdź dostępną ligę.');
+     const rarity=String(url.searchParams.get('rarity')||'').toLowerCase();
+     if(rarity&&!['normal','magic','rare','unique'].includes(rarity))return errorPage('Niewłaściwa rzadkość przedmiotu.');
+     const category=String(url.searchParams.get('category')||'');
+     if(category&&!['jewel','armour.helmet','armour.chest','armour.gloves','armour.boots','accessory.ring','accessory.amulet','accessory.belt','weapon'].includes(category))return errorPage('Nieznana kategoria przedmiotu.');
+     const itemType=String(url.searchParams.get('base')||'').slice(0,100);
+     const esRaw=url.searchParams.get('es');
+     const energyShield=esRaw&&Number.isFinite(Number(esRaw))&&Number(esRaw)>=0&&Number(esRaw)<=3000?Number(esRaw):null;
+     const all=(await data('stats')).flatMap(x=>x.entries||[]);
+     const mods=[],rawMods=url.searchParams.getAll('m');
+     if(rawMods.length>12)return errorPage('Maksymalnie 12 modów w jednym wyszukiwaniu.');
+     for(const token of rawMods){
+       const match=token.match(/^([a-z]+\.[a-z0-9_]+)(?::(-?\d+(?:\.\d+)?))?$/i);
+       if(!match)return errorPage('Nieprawidłowy format moda: '+token);
+       const mod=all.find(x=>x.id===match[1]);
+       if(!mod)return errorPage('Nieznany mod w katalogu PoE: '+match[1]);
+       const min=match[2]!=null?Number(match[2]):null;
+       if(min!=null&&(!Number.isFinite(min)||Math.abs(min)>1e6))return errorPage('Nieprawidłowa wartość moda.');
+       mods.push({id:mod.id,min});
+     }
+     if(!mods.length&&!energyShield&&!itemType)return errorPage('Wyszukiwanie wymaga przynajmniej jednego moda, ES lub konkretnej bazy.');
+     const {query}=buildQuery({mods,energyShield,rarity,category,itemType});
+     const result=await ggg('/api/trade2/search/poe2/'+encodeURIComponent(league),'POST',{query,sort:{price:'asc'}});
+     if(!result.id)return errorPage('PoE Trade nie zwróciło linku do wyników.',502);
+     const destination='https://www.pathofexile.com/trade2/search/poe2/'+encodeURIComponent(league)+'/'+encodeURIComponent(result.id);
+     console.log('[trade-link] generated '+league+' mods='+mods.map(m=>m.id).join(',')+' total='+Number(result.total||0));
+     res.writeHead(302,{location:destination,'cache-control':'no-store'});return res.end();
+   }catch(e){console.error('[trade-link] '+e.message);return errorPage(e.http===429?'PoE Trade ogranicza liczbę zapytań. Spróbuj później.':'PoE Trade chwilowo nie odpowiada: '+e.message,502)}
+ }
+
  if(url.pathname==='/api/catalog'&&req.method==='GET'){
   try{
    const [stats,leagues]=await Promise.all([data('stats'),data('leagues')]);
