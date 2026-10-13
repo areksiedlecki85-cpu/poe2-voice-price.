@@ -108,17 +108,23 @@ async function handler(req,res){
      }
      // Cultivated The Adorned: additional effect for socketed corrupted RARE jewels.
      // Match its exact text dynamically against GGG's live stat catalog, not magic jewels.
-     const rareEffectRaw=url.searchParams.get('rare_effect_min');
+     const exactRareRaw=url.searchParams.get('rare_effect_exact');
+     const minRareRaw=url.searchParams.get('rare_effect_min');
+     const rareEffectRaw=exactRareRaw??minRareRaw;
+     let rareStatId=null;
      if(rareEffectRaw!==null){
-       const rareMin=Number(rareEffectRaw);
-       if(!Number.isFinite(rareMin)||rareMin<0||rareMin>75)return errorPage('Rare jewel effect musi wynosić od 0 do 75%.');
-       const candidates=all.filter(s=>/^#% increased Effect of Jewel Socket Passive Skills containing Corrupted Rare Jewels$/i.test(String(s.text||'').replace(/\s+/g,' ').replace(/,/g,'').trim()));
+       const rareValue=Number(rareEffectRaw);
+       if(!Number.isInteger(rareValue)||rareValue<0||rareValue>75)return errorPage('Rare jewel effect musi wynosić od 0 do 75%.');
+       const candidates=all.filter(s=>{
+         const label=String(s.text||'').replace(/\s+/g,' ').replace(/,/g,'').trim();
+         return /^#% increased Effect of Jewel Socket Passive Skills containing Corrupted Rare Jewels$/i.test(label);
+       });
        const stat=candidates.find(s=>s.id.startsWith('explicit.'))
-         ||candidates.find(s=>s.id.startsWith('implicit.'))
          ||candidates.find(s=>s.id.startsWith('enchant.'))
          ||candidates[0];
-       if(!stat)return errorPage('Brak modyfikatora Increased Effect of Corrupted Rare Jewels w katalogu oficjalnego PoE Trade.');
-       if(!mods.some(m=>m.id===stat.id))mods.push({id:stat.id,min:rareMin});
+       if(!stat)return errorPage('Brak moda efektu Corrupted Rare Jewels w katalogu PoE Trade. Nie wyszukuję Magic Jewels.');
+       rareStatId=stat.id;
+       if(!mods.some(m=>m.id===stat.id))mods.push({id:stat.id,min:rareValue});
      }
      // Shortcuts are resolved against the live catalogue, so stat hashes stay current.
      // count_min=2 with three stat=... shortcuts matches any two of those three.
@@ -143,6 +149,11 @@ async function handler(req,res){
      if(!mods.length&&!countMods.length&&!energyShield&&!itemType)return errorPage('Wyszukiwanie wymaga przynajmniej jednego moda, ES lub konkretnej bazy.');
      const {query}=buildQuery({mods,energyShield,rarity,category,itemType});
      if(countMin!==null)query.stats.push({type:'count',value:{min:countMin},filters:countMods.map(m=>({id:m.id}))});
+     if(exactRareRaw!==null&&rareStatId){
+       const row=query.stats.flatMap(g=>g.filters||[]).find(f=>f.id===rareStatId);
+       if(!row)return errorPage('Błąd dokładnego filtra Corrupted Rare Jewels.',502);
+       row.value={min:Number(exactRareRaw),max:Number(exactRareRaw)};
+     }
      if(itemName)query.name=itemName;
      const result=await ggg('/api/trade2/search/poe2/'+encodeURIComponent(league),'POST',{query,sort:{price:'asc'}});
      if(!result.id)return errorPage('PoE Trade nie zwróciło linku do wyników.',502);
@@ -191,6 +202,17 @@ async function handler(req,res){
 }
 http.createServer((req,res)=>handler(req,res).catch(e=>send(res,500,{error:e.message}))).listen(PORT,'0.0.0.0',()=>{
  console.log('PoE2 Voice Price listening on '+PORT);
+ if(process.env.RUN_ADORNED_SMOKE==='1'){
+   (async()=>{
+     const all=(await data('stats')).flatMap(g=>(g.entries||[]).map(x=>({...x,group:g.label})));
+     const hits=all.filter(x=>/corrupted.*rare.*jewels/i.test(String(x.text||'')));
+     console.log('[ADORNED:CANDIDATES] '+JSON.stringify(hits));
+     const qs='?league=Forbidden%20Rites&category=jewel&rarity=unique&base=Diamond&name=The%20Adorned&rare_effect_exact=41';
+     const response=await fetch('http://127.0.0.1:'+PORT+'/go'+qs,{redirect:'manual',signal:AbortSignal.timeout(30000)});
+     console.log('[ADORNED:GO] HTTP '+response.status+' location='+(response.headers.get('location')||'')+' body='+(response.status!==302?(await response.text()).slice(0,900):''));
+   })().catch(e=>console.error('[ADORNED:ERROR] '+e.message));
+ }
+
 
  if(process.env.RUN_SAPPHIRE_SMOKE==='1'){
    (async()=>{
