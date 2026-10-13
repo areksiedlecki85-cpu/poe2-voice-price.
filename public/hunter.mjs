@@ -86,3 +86,4 @@ $('query').addEventListener('input',renderItems);
 $('category').addEventListener('change',renderItems);
 $('calculate').addEventListener('click',calculate);
 renderWatches();
+refresh();
