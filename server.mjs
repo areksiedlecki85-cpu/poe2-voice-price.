@@ -203,6 +203,25 @@ async function handler(req,res){
 http.createServer((req,res)=>handler(req,res).catch(e=>send(res,500,{error:e.message}))).listen(PORT,'0.0.0.0',()=>{
  console.log('PoE2 Voice Price listening on '+PORT);
 
+ if(process.env.RUN_SYLVAN_SKILL_CHECK==='1'){
+  (async()=>{
+   const ids=['220498b3ec04deada63ca5ec7d84d831ffc2ffa04be60215eb21b8858609c65a','36bc18894dd1851f9ba69ad5d400e97441a75f86d42e2fa64d4a95f616e31223','c7e4cfb5098580bce7f690467eefea2b8d0594c207dd3c006e61b9a790171dcf'];
+   const q='H4sIAAAAAAAAA3VQzW6DMAx-lcqXXdBEaaGU-56gx6lCLpjJWghpYlARyrs3jP0wbc3J-ezvx57ACUrvoJigM8KdhgJwQFZ4UQQ-Ao0tBew0qgH1k9u8NA2_jRCBjOajIR1Xm1NFRiwFeNYLcq_T1wDqOsANKyG7NLgOMN2M4orleSaUu2O-z7M0T_dhdkDV05yo5RDnsPM--pe0jbNDliRp8pd0TL0_-_PKd8lTrv6r0qJlGX8dodd8DYI-mINYrB9RjeVq8cUbFNs4jn40ah5Yf2rQtWfTkpZHEXpNpeuqdxL3vUbi53cHzbhnq6UBAAA';
+   for(let attempts=0;attempts<3;attempts++){
+    try{
+     const r=await ggg('/api/trade2/fetch/'+ids.join(',')+'?query='+q);
+     console.log('[SYLVAN:SKILLS] '+JSON.stringify((r.result||[]).map(x=>({
+      id:x.id,price:x.listing?.price,properties:x.item?.properties,requirements:x.item?.requirements,implicit:x.item?.implicitMods,
+      skills:x.item?.grantedSkills,skillgems:x.item?.socketedItems,selected:x.item?.extended?.mods?.explicit,base:x.item?.baseType,
+      info:x.item?.additionalProperties,corrupt:x.item?.corrupted
+     }))));
+     break;
+    }catch(e){console.log('[SYLVAN:SKILLERROR] '+e.message);if(e.http!==429||attempts===2)break;await pause(25000)}
+   }
+  })().catch(e=>console.error('[SYLVAN:SKILLFATAL] '+e.message));
+ }
+
+
  if(process.env.RUN_SYLVAN_DEEP==='1'){
   (async()=>{
    const a=(await data('stats')).flatMap(g=>g.entries||[]);
