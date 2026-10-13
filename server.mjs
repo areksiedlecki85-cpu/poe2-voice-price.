@@ -72,12 +72,16 @@ async function handler(req,res){
      if(category&&!['jewel','armour.helmet','armour.chest','armour.gloves','armour.boots','accessory.ring','accessory.amulet','accessory.belt','weapon'].includes(category))return errorPage('Nieznana kategoria przedmiotu.');
      const requestedBase=String(url.searchParams.get('base')||'').slice(0,100).trim();
      // PoE Trade names the Diamond Jewel base 'Diamond'; accept natural-language aliases.
-     const itemType=/^diamond(?: jewel)?$/i.test(requestedBase)?'Diamond':requestedBase;
+     const baseMatch=requestedBase.match(/^(diamond|sapphire|emerald|ruby)(?: jewel)?$/i);
+     const itemType=baseMatch?baseMatch[1].slice(0,1).toUpperCase()+baseMatch[1].slice(1).toLowerCase():requestedBase;
      const itemName=String(url.searchParams.get('name')||'').trim().slice(0,80);
      const esRaw=url.searchParams.get('es');
      const energyShield=esRaw&&Number.isFinite(Number(esRaw))&&Number(esRaw)>=0&&Number(esRaw)<=3000?Number(esRaw):null;
      const all=(await data('stats')).flatMap(x=>x.entries||[]);
-     const mods=[],rawMods=url.searchParams.getAll('m');
+     const mods=[],countMods=[],rawMods=url.searchParams.getAll('m');
+     const countMinRaw=url.searchParams.get('count_min');
+     const countMin=countMinRaw===null?null:Number(countMinRaw);
+     if(countMin!==null&&(!Number.isInteger(countMin)||countMin<1||countMin>8))return errorPage('Count min musi być liczbą od 1 do 8.');
      if(rawMods.length>12)return errorPage('Maksymalnie 12 modów w jednym wyszukiwaniu.');
      for(const token of rawMods){
        const match=token.match(/^([a-z]+\.[a-z0-9_]+)(?::(-?\d+(?:\.\d+)?))?$/i);
@@ -102,22 +106,34 @@ async function handler(req,res){
        if(!found)return errorPage('Oficjalny katalog PoE Trade nie zawiera filtra Increased Effect of Suffixes. Nie uruchamiam wyszukiwania bez tego moda.');
        if(!mods.some(m=>m.id===found.id))mods.push({id:found.id,min:null});
      }
-     // Dynamically map common human-readable stat shortcuts to the live PoE2 catalog.
+     // Shortcuts are resolved against the live catalogue, so stat hashes stay current.
+     // count_min=2 with three stat=... shortcuts matches any two of those three.
      const shortcut=url.searchParams.getAll('stat');
+     if(shortcut.length>8)return errorPage('Maksymalnie 8 skrótów modów w jednym wyszukiwaniu.');
      for(const name of shortcut){
-       if(name!=='companion-damage')return errorPage('Nieznany skrót moda: '+name);
-       const candidates=all.filter(x=>/^Companions deal #?%? increased Damage$/i.test(String(x.text||'').replace(/\s+/g,' ').trim()));
+       const patterns={
+         'companion-damage':/^Companions deal #?%? increased Damage$/i,
+         'minion-damage':/^Minions deal #?%? increased Damage$/i,
+         'minion-crit-damage':/^Minions have #?%? increased Critical Damage Bonus$/i
+       };
+       const pattern=patterns[name];
+       if(!pattern)return errorPage('Nieznany skrót moda: '+name);
+       const candidates=all.filter(x=>pattern.test(String(x.text||'').replace(/\\s+/g,' ').trim()));
        const match=candidates.find(x=>x.id.startsWith('explicit.'))||candidates[0];
-       if(!match)return errorPage('Brak jednoznacznego moda Companions deal increased Damage w katalogu PoE.');
-       if(!mods.some(m=>m.id===match.id))mods.push({id:match.id,min:null});
+       if(!match)return errorPage('Brak jednoznacznego moda '+name+' w katalogu PoE.');
+       if(!mods.some(m=>m.id===match.id)&&!countMods.some(m=>m.id===match.id)){
+         (countMin===null?mods:countMods).push({id:match.id,min:null});
+       }
      }
-     if(!mods.length&&!energyShield&&!itemType)return errorPage('Wyszukiwanie wymaga przynajmniej jednego moda, ES lub konkretnej bazy.');
+     if(countMin!==null&&countMods.length<countMin)return errorPage('Za mało różnych modów dla warunku Count min '+countMin+'.');
+     if(!mods.length&&!countMods.length&&!energyShield&&!itemType)return errorPage('Wyszukiwanie wymaga przynajmniej jednego moda, ES lub konkretnej bazy.');
      const {query}=buildQuery({mods,energyShield,rarity,category,itemType});
+     if(countMin!==null)query.stats.push({type:'count',value:{min:countMin},filters:countMods.map(m=>({id:m.id}))});
      if(itemName)query.name=itemName;
      const result=await ggg('/api/trade2/search/poe2/'+encodeURIComponent(league),'POST',{query,sort:{price:'asc'}});
      if(!result.id)return errorPage('PoE Trade nie zwróciło linku do wyników.',502);
      const destination='https://www.pathofexile.com/trade2/search/poe2/'+encodeURIComponent(league)+'/'+encodeURIComponent(result.id);
-     console.log('[trade-link] generated '+league+' mods='+mods.map(m=>m.id).join(',')+' total='+Number(result.total||0));
+     console.log('[trade-link] generated '+league+' mods='+mods.map(m=>m.id).join(',')+' count='+countMin+' countMods='+countMods.map(m=>m.id).join(',')+' total='+Number(result.total||0));
      res.writeHead(302,{location:destination,'cache-control':'no-store'});return res.end();
    }catch(e){console.error('[trade-link] '+e.message);return errorPage(e.http===429?'PoE Trade ogranicza liczbę zapytań. Spróbuj później.':'PoE Trade chwilowo nie odpowiada: '+e.message,502)}
  }
