@@ -17,7 +17,7 @@ async function ggg(url,method='GET',body=null){
   if(body)headers['Content-Type']='application/json';
   const r=await fetch(HOST+url,{method,headers,...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(18000)});
   const text=await r.text();
-  if(!r.ok){const err=new Error('Serwer PoE zwrócił '+r.status+(r.status===429?' (limit zapytań)':''));err.http=r.status;err.retryAfter=r.headers.get('retry-after');throw err;}
+  if(!r.ok){console.error('[poe-trade] '+method+' '+url.split('?')[0]+' => HTTP '+r.status+'; content-type '+r.headers.get('content-type'));const err=new Error('Serwer PoE zwrócił '+r.status+(r.status===429?' (limit zapytań)':''));err.http=r.status;err.retryAfter=r.headers.get('retry-after');throw err;}
   try{return JSON.parse(text)}catch{throw new Error('PoE zwróciło niepoprawną odpowiedź. Możliwa blokada lub wymagane logowanie.')}
 }
 async function data(kind){
@@ -89,4 +89,5 @@ async function handler(req,res){
  try{const contents=await readFile(target);res.writeHead(200,{'content-type':types[path.extname(target)]||'application/octet-stream','cache-control':'no-cache'});res.end(contents)}
  catch{return send(res,404,{error:'Nie znaleziono pliku'})}
 }
-http.createServer((req,res)=>handler(req,res).catch(e=>send(res,500,{error:e.message}))).listen(PORT,'0.0.0.0',()=>console.log('PoE2 Voice Price listening on '+PORT));
+http.createServer((req,res)=>handler(req,res).catch(e=>send(res,500,{error:e.message}))).listen(PORT,'0.0.0.0',()=>{console.log('PoE2 Voice Price listening on '+PORT);
+ (async()=>{for(const kind of ['stats','leagues']){try{const entries=await data(kind);console.log('[poe-trade] '+kind+' available: '+entries.length)}catch(e){console.error('[poe-trade] '+kind+' ERROR: '+e.message)}}})().catch(e=>console.error('[poe-trade] startup failed: '+e.message));});
