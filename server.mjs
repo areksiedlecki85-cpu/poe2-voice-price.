@@ -203,6 +203,54 @@ async function handler(req,res){
 http.createServer((req,res)=>handler(req,res).catch(e=>send(res,500,{error:e.message}))).listen(PORT,'0.0.0.0',()=>{
  console.log('PoE2 Voice Price listening on '+PORT);
 
+ if(process.env.RUN_REGALIA_SCAN==='1'){
+  (async()=>{
+   const all=(await data('stats')).flatMap(g=>(g.entries||[]).map(x=>({...x,group:g.label})));
+   const terms=['Reservation Efficiency of Companion Skills','to Spirit','maximum Life','Cold Resistance','Rarity of Items Found','Allocates'];
+   for(const term of terms){
+    const hits=all.filter(x=>String(x.text||'').toLowerCase().includes(term.toLowerCase())&&x.id.startsWith('explicit.')).slice(0,30);
+    console.log('[REGALIA:STATS] '+term+' '+JSON.stringify(hits.map(x=>({id:x.id,text:x.text}))));
+   }
+   const match=t=>all.filter(x=>x.id.startsWith('explicit.')&&new RegExp(t,'i').test(String(x.text||'')));
+   const r=match('increased Reservation Efficiency of Companion Skills').find(x=>/Companion Skills/i.test(x.text));
+   const spirit=match('to Spirit').find(x=>/^\+# to Spirit$/.test(x.text?.trim()));
+   const life=match('to maximum Life').find(x=>/^\+# to maximum Life$/.test(x.text?.trim()));
+   const cold=match('to Cold Resistance').find(x=>/^\+#% to Cold Resistance$/.test(x.text?.trim()));
+   console.log('[REGALIA:SELECTED] '+JSON.stringify({r,spirit,life,cold}));
+   const searches=[
+    {key:'spirit50_res16',filters:[[r,16],[spirit,50]]},
+    {key:'spirit50_res16_life190',filters:[[r,16],[spirit,50],[life,190]]},
+    {key:'spirit55_res18_life200',filters:[[r,18],[spirit,55],[life,200]]},
+    {key:'spirit50_res16_life190_cold70',filters:[[r,16],[spirit,50],[life,190],[cold,70]]},
+    {key:'reservation18_spirit50',filters:[[r,18],[spirit,50]]},
+    {key:'res18_spirit55_anychest',any:true,filters:[[r,18],[spirit,55]]}
+   ];
+   for(const c of searches){
+    try{
+     const rows=c.filters.filter(([m])=>m).map(([m,n])=>({id:m.id,value:{min:n}}));
+     const query={status:{option:'available'},...(!c.any?{type:'Sacrificial Regalia'}:{}),stats:[{type:'and',filters:rows}],filters:{type_filters:{filters:{rarity:{option:'rare'},category:{option:'armour.chest'}}}}};
+     const rs=await ggg('/api/trade2/search/poe2/Forbidden%20Rites','POST',{query,sort:{price:'asc'}});
+     const uri='https://www.pathofexile.com/trade2/search/poe2/Forbidden%20Rites/'+encodeURIComponent(rs.id);
+     console.log('[REGALIA:SEARCH] '+JSON.stringify({key:c.key,total:rs.total,uri}));
+     const ids=(rs.result||[]).filter(Boolean).slice(0,15),offers=[];
+     for(let i=0;i<ids.length;i+=10){
+      const fetched=await ggg('/api/trade2/fetch/'+ids.slice(i,i+10).map(encodeURIComponent).join(',')+'?query='+encodeURIComponent(rs.id));
+      for(const x of fetched.result||[]){
+       const it=x.item||{},p=x.listing?.price||{};
+       offers.push({id:x.id,cost:p.amount,cur:p.currency,type:it.baseType,name:it.name,corrupt:!!it.corrupted,
+        explicit:(it.explicitMods||[]).map(t=>typeof t==='string'?t:t.description),
+        implicit:(it.implicitMods||[]).map(t=>typeof t==='string'?t:t.description),
+        enchant:(it.enchantMods||[]).map(t=>typeof t==='string'?t:t.description),
+        rarity:it.rarity,requirements:it.requirements,ilvl:it.ilvl,indexed:x.listing?.indexed});
+      }
+     }
+     console.log('[REGALIA:OFFERS] '+JSON.stringify({key:c.key,offers}));
+    }catch(e){console.log('[REGALIA:ERROR] '+c.key+' '+e.message);}
+   }
+  })().catch(e=>console.log('[REGALIA:FATAL] '+e.message));
+ }
+
+
  if(process.env.RUN_SYLVAN_SKILL_CHECK==='1'){
   (async()=>{
    const ids=['220498b3ec04deada63ca5ec7d84d831ffc2ffa04be60215eb21b8858609c65a','36bc18894dd1851f9ba69ad5d400e97441a75f86d42e2fa64d4a95f616e31223','c7e4cfb5098580bce7f690467eefea2b8d0594c207dd3c006e61b9a790171dcf'];
