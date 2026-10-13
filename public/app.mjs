@@ -30,7 +30,14 @@ function parse(text){
  render();
  status(parsed.recognized?'Rozpoznano '+rows.length+' modów'+(parsed.energyShield!==null?' i ES '+parsed.energyShield:'')+'. Sprawdź dopasowanie do katalogu.':'Nie rozpoznano statystyk. Popraw tekst lub dodaj mod ręcznie.',parsed.recognized?'good':'bad');
 }
+// Weryfikowane identyfikatory z aktualnego katalogu PoE2 (kontrolowane przy ładowaniu).
+const verifiedStatIds={
+ 'Minion Critical Strike Damage':'explicit.stat_1854213750',
+ 'Minion Critical Strike Chance':'explicit.stat_491450213',
+ 'Minion Damage':'explicit.stat_1589917703'
+};
 function ranked(row,sel){
+ if(!row.id&&verifiedStatIds[row.text]&&catalog.some(c=>c.id===verifiedStatIds[row.text]))row.id=verifiedStatIds[row.text];
  const matches=rankCatalog(row.text,catalog);sel.replaceChildren();sel.add(new Option('— Wybierz mod z katalogu —',''));
  for(const m of matches)sel.add(new Option(m.text+' ['+m.id.split('.')[0]+']',m.id));
  if(row.id&&catalog.some(c=>c.id===row.id)){
