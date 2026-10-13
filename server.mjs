@@ -70,7 +70,9 @@ async function handler(req,res){
      if(rarity&&!['normal','magic','rare','unique'].includes(rarity))return errorPage('Niewłaściwa rzadkość przedmiotu.');
      const category=String(url.searchParams.get('category')||'');
      if(category&&!['jewel','armour.helmet','armour.chest','armour.gloves','armour.boots','accessory.ring','accessory.amulet','accessory.belt','weapon'].includes(category))return errorPage('Nieznana kategoria przedmiotu.');
-     const itemType=String(url.searchParams.get('base')||'').slice(0,100);
+     const requestedBase=String(url.searchParams.get('base')||'').slice(0,100).trim();
+     // PoE Trade names the Diamond Jewel base 'Diamond'; accept natural-language aliases.
+     const itemType=/^diamond(?: jewel)?$/i.test(requestedBase)?'Diamond':requestedBase;
      const esRaw=url.searchParams.get('es');
      const energyShield=esRaw&&Number.isFinite(Number(esRaw))&&Number(esRaw)>=0&&Number(esRaw)<=3000?Number(esRaw):null;
      const all=(await data('stats')).flatMap(x=>x.entries||[]);
