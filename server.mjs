@@ -106,6 +106,20 @@ async function handler(req,res){
        if(!found)return errorPage('Oficjalny katalog PoE Trade nie zawiera filtra Increased Effect of Suffixes. Nie uruchamiam wyszukiwania bez tego moda.');
        if(!mods.some(m=>m.id===found.id))mods.push({id:found.id,min:null});
      }
+     // Cultivated The Adorned: additional effect for socketed corrupted RARE jewels.
+     // Match its exact text dynamically against GGG's live stat catalog, not magic jewels.
+     const rareEffectRaw=url.searchParams.get('rare_effect_min');
+     if(rareEffectRaw!==null){
+       const rareMin=Number(rareEffectRaw);
+       if(!Number.isFinite(rareMin)||rareMin<0||rareMin>75)return errorPage('Rare jewel effect musi wynosić od 0 do 75%.');
+       const candidates=all.filter(s=>/^#% increased Effect of Jewel Socket Passive Skills,? containing Corrupted Rare Jewels$/i.test(String(s.text||'').replace(/\\s+/g,' ').trim()));
+       const stat=candidates.find(s=>s.id.startsWith('explicit.'))
+         ||candidates.find(s=>s.id.startsWith('implicit.'))
+         ||candidates.find(s=>s.id.startsWith('enchant.'))
+         ||candidates[0];
+       if(!stat)return errorPage('Brak modyfikatora Increased Effect of Corrupted Rare Jewels w katalogu oficjalnego PoE Trade.');
+       if(!mods.some(m=>m.id===stat.id))mods.push({id:stat.id,min:rareMin});
+     }
      // Shortcuts are resolved against the live catalogue, so stat hashes stay current.
      // count_min=2 with three stat=... shortcuts matches any two of those three.
      const shortcut=url.searchParams.getAll('stat');
