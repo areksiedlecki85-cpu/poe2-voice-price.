@@ -112,7 +112,7 @@ async function handler(req,res){
      if(rareEffectRaw!==null){
        const rareMin=Number(rareEffectRaw);
        if(!Number.isFinite(rareMin)||rareMin<0||rareMin>75)return errorPage('Rare jewel effect musi wynosić od 0 do 75%.');
-       const candidates=all.filter(s=>/^#% increased Effect of Jewel Socket Passive Skills,? containing Corrupted Rare Jewels$/i.test(String(s.text||'').replace(/\\s+/g,' ').trim()));
+       const candidates=all.filter(s=>/^#% increased Effect of Jewel Socket Passive Skills containing Corrupted Rare Jewels$/i.test(String(s.text||'').replace(/\s+/g,' ').replace(/,/g,'').trim()));
        const stat=candidates.find(s=>s.id.startsWith('explicit.'))
          ||candidates.find(s=>s.id.startsWith('implicit.'))
          ||candidates.find(s=>s.id.startsWith('enchant.'))
