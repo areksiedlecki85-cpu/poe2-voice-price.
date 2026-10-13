@@ -91,7 +91,7 @@ async function handler(req,res){
      if(effect){
        if(effect!=='suffixes')return errorPage('Nieznany efekt: '+effect);
        const statCandidates=all.filter(s =>
-         /increased\\s+effect\\s+of\\s+suffixes/i.test(String(s.text||''))
+         String(s.text||'').toLowerCase().includes('increased effect of suffixes')
        );
        const found=statCandidates.find(s=>s.id.startsWith('crafted.'))
          ||statCandidates.find(s=>s.id.startsWith('explicit.'))
