@@ -80,9 +80,9 @@ function show(data){
  const out=$('result');out.replaceChildren();const chosen=data.chosen;
  out.append(make('p','note',data.league+' · '+data.mode+' · '+chosen.total+' ofert spełniających kryteria'));
  if(chosen.estimate){
-  const p=make('div','summary');p.append(make('div','big',format(chosen.estimate.median)+' divine'),make('div','','Mediana '+chosen.estimate.count+' najtańszych porównywalnych ofert'),make('p','note','Zakres: '+format(chosen.estimate.minimum)+'–'+format(chosen.estimate.maximum)+' divine'));
+  const p=make('div','summary');p.append(make('div','big',format(chosen.estimate.median)+' '+chosen.estimate.currency),make('div','','Mediana '+chosen.estimate.count+' porównywalnych ofert w tej walucie'),make('p','note','Zakres: '+format(chosen.estimate.minimum)+'–'+format(chosen.estimate.maximum)+' '+chosen.estimate.currency));
   out.append(p);
-  say('Wycena na podstawie aktualnych ofert: około '+format(chosen.estimate.median)+' divine.');
+  say('Wycena na podstawie aktualnych ofert: około '+format(chosen.estimate.median)+' '+chosen.estimate.currency+'.');
  }else{
   out.append(make('div','status bad',chosen.total===0?'Nie ma ofert z takimi modami.':'Za mało wycenionych w divine ofert, żeby wiarygodnie oszacować cenę.'));
   say('Nie mam wystarczających danych rynkowych, aby podać cenę.');
