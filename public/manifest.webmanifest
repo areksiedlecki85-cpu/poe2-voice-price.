@@ -1,0 +1,16 @@
+{
+  "name": "PoE2 Voice Price",
+  "short_name": "PoE2 Price",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c111a",
+  "theme_color": "#101620",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
