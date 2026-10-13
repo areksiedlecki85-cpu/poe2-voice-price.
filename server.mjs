@@ -73,6 +73,7 @@ async function handler(req,res){
      const requestedBase=String(url.searchParams.get('base')||'').slice(0,100).trim();
      // PoE Trade names the Diamond Jewel base 'Diamond'; accept natural-language aliases.
      const itemType=/^diamond(?: jewel)?$/i.test(requestedBase)?'Diamond':requestedBase;
+     const itemName=String(url.searchParams.get('name')||'').trim().slice(0,80);
      const esRaw=url.searchParams.get('es');
      const energyShield=esRaw&&Number.isFinite(Number(esRaw))&&Number(esRaw)>=0&&Number(esRaw)<=3000?Number(esRaw):null;
      const all=(await data('stats')).flatMap(x=>x.entries||[]);
@@ -112,6 +113,7 @@ async function handler(req,res){
      }
      if(!mods.length&&!energyShield&&!itemType)return errorPage('Wyszukiwanie wymaga przynajmniej jednego moda, ES lub konkretnej bazy.');
      const {query}=buildQuery({mods,energyShield,rarity,category,itemType});
+     if(itemName)query.name=itemName;
      const result=await ggg('/api/trade2/search/poe2/'+encodeURIComponent(league),'POST',{query,sort:{price:'asc'}});
      if(!result.id)return errorPage('PoE Trade nie zwróciło linku do wyników.',502);
      const destination='https://www.pathofexile.com/trade2/search/poe2/'+encodeURIComponent(league)+'/'+encodeURIComponent(result.id);
