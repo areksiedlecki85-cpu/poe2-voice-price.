@@ -3,6 +3,7 @@ import {readFile} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {resolveStat,buildQuery,estimateListings} from './trade.mjs';
+import {getHunterSnapshot} from './market/hunter.mjs';
 const ROOT=path.join(path.dirname(fileURLToPath(import.meta.url)),'public');
 const HOST='https://www.pathofexile.com',PORT=Number(process.env.PORT||3000);
 const USER_AGENT='PoE2VoicePrice/0.2 (community trade pricing research)';
@@ -52,6 +53,12 @@ async function search(input,multiplier=1){
 async function handler(req,res){
  const url=new URL(req.url,'http://localhost');
  if(url.pathname==='/api/health')return send(res,200,{ok:true,note:'Serwer działa, nie oznacza to dostępności PoE Trade'});
+ if(url.pathname==='/api/hunter'&&req.method==='GET'){
+  if(!rate(req))return send(res,429,{error:'Zbyt wiele zapytań; odczekaj minutę.'});
+  try{return send(res,200,await getHunterSnapshot())}
+  catch(e){console.error('[HUNTER] '+e.message);return send(res,503,{error:'Źródło cen jest chwilowo niedostępne: '+e.message})}
+ }
+
 
  // One-click link from ChatGPT: generate official trade search and redirect.
  // /go?league=Forbidden%20Rites&category=jewel&rarity=magic&m=explicit.stat_1854213750:20&m=explicit.stat_1589917703:20
@@ -202,6 +209,14 @@ async function handler(req,res){
 }
 http.createServer((req,res)=>handler(req,res).catch(e=>send(res,500,{error:e.message}))).listen(PORT,'0.0.0.0',()=>{
  console.log('PoE2 Voice Price listening on '+PORT);
+ if(process.env.RUN_HUNTER_SMOKE==='1'){
+  (async()=>{
+   const res=await fetch('http://127.0.0.1:'+PORT+'/api/hunter',{signal:AbortSignal.timeout(65000)});
+   const json=await res.json();
+   console.log('[HUNTER:SMOKE] '+JSON.stringify({http:res.status,total:json.total,items:json.items?.length,partial:json.partial,errors:json.errors?.slice(0,10),first:json.items?.slice(0,3).map(x=>({name:x.name,value:x.value,category:x.category,listingCount:x.listingCount})),note:json.error}));
+  })().catch(e=>console.error('[HUNTER:SMOKE] '+e.message));
+ }
+
  if(process.env.RUN_SAFE_PRICE_PROBE==='1')import('./scripts/safe-price-probe.mjs').catch(e=>console.error('[HUNTER:PROBE] '+e.message));
 
  if(process.env.RUN_TIARA_VALUATION==='1'){
