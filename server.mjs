@@ -90,11 +90,9 @@ async function handler(req,res){
      const effect=String(url.searchParams.get('effect')||'').trim().toLowerCase();
      if(effect){
        if(effect!=='suffixes')return errorPage('Nieznany efekt: '+effect);
-       const statCandidates=all.filter(s=>{
-         const normalized=String(s.text||'').toLowerCase()
-           .replace(/^[\\s\\d#%+().\\-–—]+/,'').replace(/\\s+/g,' ').trim();
-         return normalized==='increased effect of suffixes';
-       });
+       const statCandidates=all.filter(s =>
+         /increased\\s+effect\\s+of\\s+suffixes/i.test(String(s.text||''))
+       );
        const found=statCandidates.find(s=>s.id.startsWith('crafted.'))
          ||statCandidates.find(s=>s.id.startsWith('explicit.'))
          ||statCandidates[0];
