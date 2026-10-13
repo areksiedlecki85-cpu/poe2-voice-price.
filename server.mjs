@@ -89,23 +89,4 @@ async function handler(req,res){
  try{const contents=await readFile(target);res.writeHead(200,{'content-type':types[path.extname(target)]||'application/octet-stream','cache-control':'no-cache'});res.end(contents)}
  catch{return send(res,404,{error:'Nie znaleziono pliku'})}
 }
-http.createServer((req,res)=>handler(req,res).catch(e=>send(res,500,{error:e.message}))).listen(PORT,'0.0.0.0',()=>{console.log('PoE2 Voice Price listening on '+PORT);
- (async()=>{for(const kind of ['stats','leagues']){try{const entries=await data(kind);console.log('[poe-trade] '+kind+' available: '+entries.length);if(kind==='stats'){const choices=entries.flatMap(g=>g.entries||[]).filter(x=>/minion/i.test(x.text||'')&&/(crit|damage)/i.test(x.text||'')).slice(0,18);console.log('[poe-trade] sample minion stats '+JSON.stringify(choices.map(s=>({id:s.id,text:s.text}))))}}catch(e){console.error('[poe-trade] '+kind+' ERROR: '+e.message)}}
-    try {
-      const leagues=await data('leagues');
-      const league=(leagues.find(x=>x.realm==='poe2'&&!/hardcore|standard/i.test(x.id))||leagues.find(x=>x.id==='Standard')||leagues[0])?.id;
-      if(league){
-        const query={query:{status:{option:'available'},filters:{type_filters:{filters:{rarity:{option:'magic'}}}}},sort:{price:'asc'}};
-        const result=await ggg('/api/trade2/search/poe2/'+encodeURIComponent(league),'POST',query);
-        console.log('[poe-trade] live-search smoke '+league+': id='+(result.id?'yes':'none')+', total='+result.total+', error='+(result.error?.message||'none'));
-        if(result.id && result.result?.length){
-           try{
-             const fetched=await ggg('/api/trade2/fetch/'+encodeURIComponent(result.result[0])+'?query='+encodeURIComponent(result.id));
-             const item=fetched.result?.[0];
-             console.log('[poe-trade] fetch smoke: records='+(fetched.result?.length||0)+', price='+JSON.stringify(item?.listing?.price||null));
-           }catch(e){console.error('[poe-trade] fetch smoke ERROR '+e.message)}
-        }
-
-      }
-    } catch(e){console.error('[poe-trade] live-search smoke ERROR: '+e.message)}
- })().catch(e=>console.error('[poe-trade] startup failed: '+e.message));});
+http.createServer((req,res)=>handler(req,res).catch(e=>send(res,500,{error:e.message}))).listen(PORT,'0.0.0.0',()=>console.log('PoE2 Voice Price listening on '+PORT));
