@@ -202,6 +202,58 @@ async function handler(req,res){
 }
 http.createServer((req,res)=>handler(req,res).catch(e=>send(res,500,{error:e.message}))).listen(PORT,'0.0.0.0',()=>{
  console.log('PoE2 Voice Price listening on '+PORT);
+
+ if(process.env.RUN_SYLVAN_CHECK==='1'){
+   (async()=>{
+     const all=(await data('stats')).flatMap(g=>(g.entries||[]).map(x=>({...x,group:g.label})));
+     const spirit=all.filter(x=>/^#% increased Spirit$/i.test(String(x.text||'').replace(/\s+/g,' ').trim()));
+     const companion=all.filter(x=>/Companions deal #?%? increased Damage to your Marked targets/i.test(String(x.text||'').replace(/\s+/g,' ').trim()));
+     console.log('[SYLVAN:STATS] '+JSON.stringify({spirit,companion}));
+     const sp=spirit.find(x=>x.id.startsWith('explicit.'))||spirit[0],cp=companion.find(x=>x.id.startsWith('explicit.'))||companion[0];
+     const cases=[
+       {key:'market-50-200',price:{min:50,max:200,option:'divine'}},
+       {key:'bargain-10-70',price:{min:10,max:70,option:'divine'}},
+       {key:'high-rolls-under-150',price:{max:150,option:'divine'},spirit:73,companion:95},
+       {key:'max-spirit-under-150',price:{max:150,option:'divine'},spirit:75},
+       {key:'best-150-400',price:{min:150,max:400,option:'divine'},spirit:73,companion:95}
+     ];
+     for(const c of cases){
+       const query={status:{option:'available'},name:"Sylvan's Effigy",type:'Stoic Sceptre',
+         filters:{type_filters:{filters:{rarity:{option:'unique'}}},trade_filters:{filters:{price:c.price}}},stats:[]};
+       const rows=[];
+       if(c.spirit&&sp)rows.push({id:sp.id,value:{min:c.spirit}});
+       if(c.companion&&cp)rows.push({id:cp.id,value:{min:c.companion}});
+       if(rows.length)query.stats=[{type:'and',filters:rows}];
+       try{
+         const result=await ggg('/api/trade2/search/poe2/Forbidden%20Rites','POST',{query,sort:{price:'asc'}});
+         const id=result.id;
+         console.log('[SYLVAN:SEARCH] '+JSON.stringify({key:c.key,total:result.total,id,uri:'https://www.pathofexile.com/trade2/search/poe2/Forbidden%20Rites/'+id}));
+         const rawids=(result.result||[]).filter(Boolean).slice(0,35);
+         const items=[];
+         for(let j=0;j<rawids.length;j+=10){
+           const batch=rawids.slice(j,j+10).map(encodeURIComponent).join(',');
+           const r=await ggg('/api/trade2/fetch/'+batch+'?query='+encodeURIComponent(id));
+           for(const x of r.result||[]){
+             if(!x?.item)continue;
+             const it=x.item,p=x.listing?.price||{};
+             items.push({
+               id:x.id,amount:p.amount,unit:p.currency,spirit:it.explicitMods?.find(t=>/increased Spirit/i.test(t))||'',
+               companion:it.explicitMods?.find(t=>/Companions deal/i.test(t))||'',
+               attribute:it.explicitMods?.find(t=>/to all Attributes/i.test(t))||'',
+               skills:(it.implicitMods||[]).filter(t=>/Grants Skill/i.test(t)),
+               socketCount:it.sockets?.length||0,corrupted:!!it.corrupted,
+               socketText:it.sockets?.map(x=>x.group).join(',')||'',
+               notes:(it.enchantMods||[]).concat(it.runeMods||[]).slice(0,3),
+               indexed:x.listing?.indexed||''
+             });
+           }
+         }
+         console.log('[SYLVAN:OFFERS] '+JSON.stringify({key:c.key,items}));
+       }catch(e){console.log('[SYLVAN:ERROR] '+c.key+' '+e.message)}
+     }
+   })().catch(e=>console.error('[SYLVAN:FATAL] '+e.message));
+ }
+
  if(process.env.RUN_ADORNED_SMOKE==='1'){
    (async()=>{
      const all=(await data('stats')).flatMap(g=>(g.entries||[]).map(x=>({...x,group:g.label})));
