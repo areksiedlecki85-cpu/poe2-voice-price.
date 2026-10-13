@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="pl"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101620"><title>Market Hunter — PoE 2</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,Arial,sans-serif;--bg:#101620;--panel:#192533;--edge:#384957;--gold:#e6bd74;--muted:#b0c1d1;--ok:#9be4c0}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f3f5fa}main{max-width:920px;margin:auto;padding:20px 16px 70px}
+a{color:var(--gold)}header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px}h1{margin:10px 0;font-size:27px}h2{font-size:19px;margin:0 0 12px}
+p{line-height:1.45}small,.note{color:var(--muted)}.card{background:var(--panel);border:1px solid var(--edge);border-radius:15px;padding:17px;margin-top:16px}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.metric{padding:12px 8px;border:1px solid var(--edge);border-radius:12px;text-align:center}.metric strong{display:block;font-size:20px;color:var(--gold)}.metric small{font-size:12px}
+button,select,input{font:inherit;border-radius:10px;border:1px solid #506375;background:#101b27;color:#fff;padding:10px;min-width:0}
+button{cursor:pointer;background:#344e64;border-color:#61788a}button.primary{background:#b88a45;border-color:#dfb77a;color:#101620;font-weight:750}
+button:disabled{opacity:.5;cursor:wait}button:hover:not(:disabled){filter:brightness(1.15)}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}.bar{display:flex;flex-wrap:wrap;gap:9px;align-items:end}
+.bar>*{flex:1;min-width:110px}.bar button{flex:0 0 auto}.smallButton{padding:6px 9px;font-size:12px}
+.items{display:grid;grid-template-columns:repeat(auto-fill,minmax(275px,1fr));gap:11px;margin-top:15px}
+.item{border:1px solid var(--edge);border-radius:12px;padding:13px;display:grid;gap:6px;background:#14202c}
+.item h3{font-size:15px;margin:0;color:#f5d39e}.row{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.price{font-size:20px;font-weight:700}.tag{font-size:12px;color:var(--muted)}
+.tag.warn{color:#ffce93}.tag.ok{color:var(--ok)}.item .controls{display:flex;flex-wrap:wrap;gap:6px}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.result{margin-top:10px;border-radius:10px;padding:12px;background:#101c27;line-height:1.5}
+footer{margin-top:25px;font-size:12px;color:var(--muted)}
+@media(max-width:680px){.split{grid-template-columns:1fr}.metrics strong{font-size:17px}h1{font-size:24px}}
+</style></head><body><main>
+<header><div><a href="/">← Wyszukiwarka PoE 2</a><h1>Market Hunter</h1></div><div class="tag">Forbidden Rites • wersja MVP</div></header>
+<div class="metrics"><div class="metric"><strong>50–200 div</strong><small>Wartość referencyjna</small></div><div class="metric"><strong>35%</strong><small>Minimalna przecena</small></div><div class="metric"><strong>Wszystkie</strong><small>Obsługiwane kategorie</small></div></div>
+<section class="card"><div class="row"><h2>Rynek</h2><button id="refresh" class="primary" type="button">Sprawdź ceny</button></div>
+<p id="status" role="status" class="note">Naciśnij „Sprawdź ceny”, aby pobrać aktualny przegląd ekonomii.</p>
+<p class="note">Źródło: <a href="https://poe.ninja/docs/api" target="_blank" rel="noopener noreferrer">poe.ninja — udokumentowane API ekonomiczne</a>. Pokazuje ceny referencyjne i liczbę ofert, <strong>nie</strong> listę konkretnych aukcji. Automatyczne wykrywanie przecenionych aukcji jest jeszcze niedostępne.</p>
+<div class="bar"><div><label for="query">Nazwa przedmiotu</label><input id="query" placeholder="np. Sylvan, Adorned"></div><div><label for="category">Kategoria</label><select id="category"><option value="all">Wszystkie</option></select></div></div>
+<div id="count" class="note" style="margin-top:12px"></div><div id="items" class="items"></div></section>
+<div class="split"><section class="card"><h2>Sprawdź cenę aukcji</h2>
+<p class="note">Wybierz przedmiot z listy, wpisz ofertę znalezioną na Trade i porównaj z ceną referencyjną. Wynik nie uwzględnia wyjątkowych rolli ani corruptions.</p>
+<div><label for="selected">Przedmiot</label><input id="selected" readonly placeholder="Wybierz z listy powyżej"></div>
+<div style="margin-top:10px"><label for="ask">Cena wystawienia w divine</label><input id="ask" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="np. 60" style="width:100%"></div>
+<button id="calculate" class="primary" type="button" style="margin-top:12px">Oceń ofertę</button>
+<div id="calculation" class="result" role="status">Oczekuję na przedmiot i cenę.</div>
+</section>
+<section class="card"><h2>Moje obserwowane</h2><p class="note">Zapisujemy na tym urządzeniu wartość referencyjną z momentu dodania. Po odświeżeniu strony oznaczymy spadek o ≥35%. To <strong>nie są alerty nowych aukcji</strong> ani powiadomienia działające w tle.</p>
+<div id="watch" class="items" style="grid-template-columns:1fr"></div></section></div>
+<footer>PoE2 Market Hunter to narzędzie nieoficjalne, niepowiązane z Grinding Gear Games. Nie wykonuje zakupów ani handlu automatycznego. Ceny są szacunkowe i mogą odbiegać od faktycznych transakcji.</footer>
+</main><script type="module" src="/hunter.mjs"></script></body></html>
