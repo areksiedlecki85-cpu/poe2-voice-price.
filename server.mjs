@@ -209,6 +209,7 @@ async function handler(req,res){
 }
 http.createServer((req,res)=>handler(req,res).catch(e=>send(res,500,{error:e.message}))).listen(PORT,'0.0.0.0',()=>{
  console.log('PoE2 Voice Price listening on '+PORT);
+ if(process.env.RUN_BOOTS_MARKET_CHECK==='1')import('./scripts/boots-market-check.mjs').catch(e=>console.error('[BOOTS:IMPORT] '+e.message));
  if(process.env.RUN_AUCTION_FORM_SMOKE==='1'){
   (async()=>{
    const {readFile:read}=await import('node:fs/promises');
