@@ -10,7 +10,7 @@ async function req(path,body=null){
  if(!res.ok){const e=new Error('HTTP '+res.status);e.status=res.status;e.retry=res.headers.get('retry-after');throw e}
  return res.json();
 }
-function norm(t){return String(t||'').replace(/\[[^\]|]+\|([^\]]+)\]/g,'$1').replace(/\s+/g,' ').trim()}
+function norm(t){return String(typeof t==='string'?t:t?.description||t?.text||JSON.stringify(t)).replace(/\[[^\]|]+\|([^\]]+)\]/g,'$1').replace(/\s+/g,' ').trim()}
 const hits=[],stat=[];
 try{
  const stats=await req('/api/trade2/data/stats');
@@ -22,11 +22,12 @@ try{
  const augment=stat.filter(x=>norm(x.text).toLowerCase().includes('effect of socketed augment items')).slice(0,20);
  console.log('[BOOTS:CHOICE] '+JSON.stringify({move,life,fire,cold,augment}));
  if(!move||!life||!fire||!cold)throw new Error('Missing main filters');
+ const horror={id:'explicit.stat_2081918629'};
  const groups=[
-  {key:'same-base-35move-life2res',base:'Runeforged Daggerfoot Shoes',mods:[[move,35],[life,90],[fire,38],[cold,35]]},
-  {key:'same-base-35move-2res',base:'Runeforged Daggerfoot Shoes',mods:[[move,35],[fire,38],[cold,35]]},
-  {key:'any-base-35move-life2res',mods:[[move,35],[life,90],[fire,38],[cold,35]]},
-  {key:'same-base-35move-life',base:'Runeforged Daggerfoot Shoes',mods:[[move,35],[life,90]]}
+  {key:'same-base-Horror-35move-life2res',base:'Runeforged Daggerfoot Shoes',mods:[[move,35],[life,90],[fire,38],[cold,35],[horror,60]]},
+  {key:'any-base-Horror-35move-life2res',mods:[[move,35],[life,90],[fire,38],[cold,35],[horror,60]]},
+  {key:'same-base-Horror-35move-life',base:'Runeforged Daggerfoot Shoes',mods:[[move,35],[life,90],[horror,60]]},
+  {key:'any-base-Horror-35move-2res',mods:[[move,35],[fire,38],[cold,35],[horror,60]]}
  ];
  for(const c of groups){
   const query={status:{option:'available'},...c.base?{type:c.base}:{},stats:[{type:'and',filters:c.mods.map(([x,min])=>({id:x.id,value:{min}}))}],filters:{type_filters:{filters:{rarity:{option:'rare'}}}}};
