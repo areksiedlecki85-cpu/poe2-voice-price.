@@ -209,6 +209,20 @@ async function handler(req,res){
 }
 http.createServer((req,res)=>handler(req,res).catch(e=>send(res,500,{error:e.message}))).listen(PORT,'0.0.0.0',()=>{
  console.log('PoE2 Voice Price listening on '+PORT);
+ if(process.env.RUN_AUCTION_FORM_SMOKE==='1'){
+  (async()=>{
+   const {readFile:read}=await import('node:fs/promises');
+   const {Script}=await import('node:vm');
+   const js=await read(path.join(ROOT,'hunter.mjs'),'utf8');
+   new Script(js.replace(/^import[^\\n]*\\n/gm,''),{filename:'hunter.mjs'});
+   const [page,mod]=await Promise.all(['hunter.html','hunter-calc.mjs'].map(async x=>{const r=await fetch('http://127.0.0.1:'+PORT+'/'+x);return {status:r.status,text:await r.text()}}));
+   const {evaluateAuction}=await import('./public/hunter-calc.mjs');
+   const ok=evaluateAuction({name:"Sylvan's Effigy",ask:'65',reference:'100',listingCount:10});
+   const manual=evaluateAuction({name:'Rare helmet',ask:'60,5',reference:'100'});
+   console.log('[AUCTION:FORM:SMOKE] '+JSON.stringify({jsParses:true,pageHttp:page.status,moduleHttp:mod.status,hasEditableItem:/id="auctionName"/.test(page.text),hasReference:/id="reference"/.test(page.text),hasForm:/id="auctionForm"/.test(page.text),percentage:ok.discountPercent,status:ok.status,manual:manual.ok,manualDiscount:manual.discountPercent,works:page.status===200&&mod.status===200&&ok.status==='candidate'&&manual.ok&&/id="auctionForm"/.test(page.text)}));
+  })().catch(e=>console.error('[AUCTION:FORM:SMOKE] ERROR '+e.message));
+ }
+
  if(process.env.RUN_HUNTER_SMOKE==='1'){
   (async()=>{
    for(const uri of ['/hunter.html','/hunter.mjs','/']){
