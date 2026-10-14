@@ -1,3 +1,4 @@
+import {evaluateAuction,parseDivine} from './hunter-calc.mjs';
 const $=id=>document.getElementById(id);
 let data=null,selected=null;
 const KEY='poe2-market-hunter-watch-v1';
@@ -13,6 +14,20 @@ function label(i){
  if(i.variant)v.push('wariant: '+i.variant);
  if(i.corrupted)v.push('corrupted');
  return v.join(' • ');
+}
+function pickItem(item,scroll=true){
+ selected=item;
+ $('auctionName').value=label(item);
+ $('reference').value=String(item.value);
+ $('auctionPick').value=item.id;
+ $('calculation').textContent='Cena odniesienia: '+fmt(item.value)+' div. Wpisz cenę aukcji i kliknij „Porównaj ceny”.';
+ if(scroll){$('auctionForm').scrollIntoView({behavior:'smooth',block:'center'});$('ask').focus({preventScroll:true});}
+}
+function fillPicker(){
+ const picker=$('auctionPick'),old=selected?.id;
+ picker.replaceChildren(new Option('— wybierz z cen referencyjnych —',''));
+ for(const item of data?.items||[])picker.add(new Option(label(item)+' — '+fmt(item.value)+' div',item.id));
+ picker.value=old&&data?.items?.some(i=>i.id===old)?old:'';
 }
 function categoryOptions(){
  const sel=$('category'),prev=sel.value;sel.replaceChildren(new Option('Wszystkie','all'));
@@ -32,7 +47,7 @@ function renderItems(){
   const confidence=el('div','tag '+(i.confidence==='low'?'warn':'ok'),i.confidence==='low'?'Mało danych — wycena niepewna':'Cena referencyjna: próba ≥5 ofert');
   card.append(confidence);
   const buttons=el('div','controls');
-  buttons.append(makeButton('Sprawdź ofertę',()=>{selected=i;$('selected').value=label(i);$('calculation').textContent='Cena referencyjna: '+fmt(i.value)+' div. Wpisz cenę aukcji.';$('ask').focus()}));
+  buttons.append(makeButton('Sprawdź ofertę',()=>pickItem(i)));
   const watch=watches.some(w=>w.id===i.id);
   buttons.append(makeButton(watch?'Obserwowany ✓':'Obserwuj',()=>{
    if(!watches.some(w=>w.id===i.id)){watches.push({id:i.id,name:label(i),baseline:i.value,target:Math.round(i.value*.65*100)/100});persist();}
@@ -56,17 +71,21 @@ function renderWatches(){
  }
 }
 function calculate(){
- if(!selected){$('calculation').textContent='Najpierw wybierz przedmiot z listy.';return}
- const ask=Number($('ask').value),ref=selected.value;
- if(!Number.isFinite(ask)||ask<=0){$('calculation').textContent='Wpisz dodatnią cenę aukcji w divine.';return}
- const pct=(1-ask/ref)*100,diff=ref-ask;
- let message='Cena: '+fmt(ask)+' div • referencja: '+fmt(ref)+' div. Różnica: '+fmt(pct)+'% ('+fmt(diff)+' div). ';
- if(pct>=35){
-  message+=selected.listingCount>=5?'Potencjalny kandydat do sprawdzenia.':'Niepewna wycena (mało ofert).';
- }else message+='Poniżej progu przeceny 35%.';
- message+=' To nie jest potwierdzony zysk. Porównaj dokładnie rolle, wariant, corruption i sockety.';
+ const name=$('auctionName').value;
+ const reference=$('reference').value;
+ const asking=$('ask').value;
+ const exactSource=selected&&name===label(selected)&&parseDivine(reference)===selected.value;
+ const result=evaluateAuction({name,ask:asking,reference,minimumDiscount:35,listingCount:exactSource?selected.listingCount:null});
+ if(!result.ok){$('calculation').textContent=result.error;return}
+ let message=result.item+' — cena: '+fmt(result.price)+' div, wartość porównawcza: '+fmt(result.market)+' div. ';
+ message+='Różnica: '+fmt(result.discountPercent)+'% ('+fmt(result.difference)+' div). ';
+ if(result.status==='candidate')message+='Możliwa okazja według ceny zbiorczej, ale niezweryfikowana aukcja. ';
+ else if(result.status==='review')message+='Przekroczony próg 35%, lecz brak wystarczających danych porównawczych. ';
+ else message+='Poniżej progu 35% przeceny. ';
+ message+='Weryfikuj rolle, corruption, sockety i możliwość sprzedaży. Wprowadzone ceny nie są sprawdzane na PoE Trade.';
  $('calculation').textContent=message;
 }
+
 async function refresh(){
  const button=$('refresh');button.disabled=true;status('Pobieram ceny referencyjne (pierwsze wczytanie może trwać kilkanaście sekund)...');
  try{
@@ -77,13 +96,19 @@ async function refresh(){
   if(!Array.isArray(payload.items))throw Error('Brak danych o przedmiotach');
   data=payload;
   status('Pobrano '+data.items.length+' wycen (łącznie '+data.total+'). '+new Date(data.updatedAt).toLocaleString('pl-PL')+'. '+(data.partial?'Częściowe dane: '+(data.errors||[]).map(e=>e.type).join(', '):'Wszystkie kategorie odświeżone.'));
-  categoryOptions();renderItems();renderWatches();
+  categoryOptions();fillPicker();renderItems();renderWatches();
  }catch(err){status('Nie udało się pobrać danych: '+err.message+' — spróbuj później.');}
  finally{button.disabled=false;}
 }
 $('refresh').addEventListener('click',refresh);
 $('query').addEventListener('input',renderItems);
 $('category').addEventListener('change',renderItems);
-$('calculate').addEventListener('click',calculate);
+$('auctionForm').addEventListener('submit',e=>{e.preventDefault();calculate()});
+$('auctionPick').addEventListener('change',()=>{
+ const item=data?.items?.find(x=>x.id===$('auctionPick').value);
+ if(item)pickItem(item,false);
+});
+$('auctionName').addEventListener('input',()=>{selected=null;$('auctionPick').value='';});
+
 renderWatches();
 refresh();
