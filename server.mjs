@@ -214,7 +214,7 @@ http.createServer((req,res)=>handler(req,res).catch(e=>send(res,500,{error:e.mes
    const {readFile:read}=await import('node:fs/promises');
    const {Script}=await import('node:vm');
    const js=await read(path.join(ROOT,'hunter.mjs'),'utf8');
-   new Script(js.replace(/^import[^\\n]*\\n/gm,''),{filename:'hunter.mjs'});
+   new Script(js.slice(js.indexOf(String.fromCharCode(10))+1),{filename:'hunter.mjs'});
    const [page,mod]=await Promise.all(['hunter.html','hunter-calc.mjs'].map(async x=>{const r=await fetch('http://127.0.0.1:'+PORT+'/'+x);return {status:r.status,text:await r.text()}}));
    const {evaluateAuction}=await import('./public/hunter-calc.mjs');
    const ok=evaluateAuction({name:"Sylvan's Effigy",ask:'65',reference:'100',listingCount:10});
