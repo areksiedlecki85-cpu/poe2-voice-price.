@@ -31,11 +31,15 @@ footer{margin-top:25px;font-size:12px;color:var(--muted)}
 <div class="bar"><div><label for="query">Nazwa przedmiotu</label><input id="query" placeholder="np. Sylvan, Adorned"></div><div><label for="category">Kategoria</label><select id="category"><option value="all">Wszystkie</option></select></div></div>
 <div id="count" class="note" style="margin-top:12px"></div><div id="items" class="items"></div></section>
 <div class="split"><section class="card"><h2>Sprawdź cenę aukcji</h2>
-<p class="note">Wybierz przedmiot z listy, wpisz ofertę znalezioną na Trade i porównaj z ceną referencyjną. Wynik nie uwzględnia wyjątkowych rolli ani corruptions.</p>
-<div><label for="selected">Przedmiot</label><input id="selected" readonly placeholder="Wybierz z listy powyżej"></div>
-<div style="margin-top:10px"><label for="ask">Cena wystawienia w divine</label><input id="ask" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="np. 60" style="width:100%"></div>
-<button id="calculate" class="primary" type="button" style="margin-top:12px">Oceń ofertę</button>
-<div id="calculation" class="result" role="status">Oczekuję na przedmiot i cenę.</div>
+<p class="note">Wpisz cenę znalezioną u sprzedającego oraz szacowaną wartość rynkową. Jeśli item jest na liście Market Huntera, wybierz go, aby automatycznie uzupełnić cenę odniesienia. <strong>To porównanie cen, nie automatyczne pobranie aukcji.</strong></p>
+<form id="auctionForm" novalidate>
+<div><label for="auctionName">Przedmiot</label><input id="auctionName" type="text" placeholder="np. Sylvan's Effigy" autocomplete="off" style="width:100%"></div>
+<div style="margin-top:10px"><label for="auctionPick">Lub wybierz przedmiot z listy</label><select id="auctionPick" style="width:100%"><option value="">— wybierz z cen referencyjnych —</option></select></div>
+<div style="margin-top:10px"><label for="reference">Wartość rynkowa (div)</label><input id="reference" type="text" inputmode="decimal" placeholder="np. 100" style="width:100%"></div>
+<div style="margin-top:10px"><label for="ask">Cena aukcji (div)</label><input id="ask" type="text" inputmode="decimal" placeholder="np. 60" style="width:100%"></div>
+<button id="calculate" class="primary" type="submit" style="margin-top:12px;width:100%">Porównaj ceny</button>
+</form>
+<div id="calculation" class="result" role="status">Wpisz nazwę przedmiotu i dwie ceny albo wybierz przedmiot z listy.</div>
 </section>
 <section class="card"><h2>Moje obserwowane</h2><p class="note">Zapisujemy na tym urządzeniu wartość referencyjną z momentu dodania. Po odświeżeniu strony oznaczymy spadek o ≥35%. To <strong>nie są alerty nowych aukcji</strong> ani powiadomienia działające w tle.</p>
 <div id="watch" class="items" style="grid-template-columns:1fr"></div></section></div>
